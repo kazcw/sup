@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 
 #define HELP "sup [-hlv] [cmd ..]"
 #define VERSION "sup 0.1 pancake <nopcode.org> copyleft 2011"
@@ -22,24 +21,6 @@ struct rule_t {
 static int die(int ret, const char *org, const char *str) {
 	fprintf (stderr, "%s%s%s\n", org?org:"", org?": ":"", str);
 	return ret;
-}
-
-static char *getpath(const char *str) {
-	struct stat st;
-	static char file[4096];
-	char *p, *path = getenv ("PATH");
-	if (path)
-	for (p = path; *p; p++) {
-		if (*p==':' && (p>path&&*(p-1)!='\\')) {
-			*p = 0;
-			snprintf (file, sizeof (file)-1, "%s/%s", path, str);
-			if (!lstat (file, &st))
-				return file;
-			*p = ':';
-			path = p+1;
-		}
-	}
-	return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -68,31 +49,11 @@ int main(int argc, char **argv) {
 		if (gid != SETGID && rules[i].gid != -1 && rules[i].gid != gid)
 			continue;
 		if (*rules[i].cmd=='*' || !strcmp (argv[1], rules[i].cmd)) {
-#if ENFORCE	
-			struct stat st;
-			if (*rules[i].path=='*') {
-				if (*argv[1]=='.' || *argv[1]=='/')
-					cmd = argv[1];
-				else if (!(cmd = getpath (argv[1])))
-					return die (1, "execv", "cannot find program");
-			} else cmd = rules[i].path;
-			if (lstat (cmd, &st) == -1)
-				return die (1, "lstat", "cannot stat program");
-			if (st.st_mode & 0222)
-				return die (1, "stat", "cannot run writable binaries.");
-#endif
-			if (setuid (SETUID) == -1 || setgid (SETGID) == -1 ||
-			    seteuid (SETUID) == -1 || setegid (SETGID) == -1)
+			cmd = (*rules[i].path=='*') ? argv[1] : rules[i].path;
+			if (setuid (SETUID) || setgid (SETGID) ||
+				seteuid (SETUID) || setegid (SETGID))
 				return die (1, "set[e][ug]id", strerror (errno));
-#ifdef CHROOT
-			if (*CHROOT)
-				if (chdir (CHROOT) == -1 || chroot (".") == -1)
-					return die (1, "chroot", strerror (errno));
-			if (*CHRDIR)
-				if (chdir (CHRDIR) == -1)
-					return die (1, "chdir", strerror (errno));
-#endif
-			ret = execv (cmd, argv+1);
+			ret = execvp (cmd, argv+1);
 			return die (ret, "execv", strerror (errno));
 		}
 	}

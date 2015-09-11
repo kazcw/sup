@@ -4,11 +4,6 @@
 #define SETUID 0
 #define SETGID 0
 
-#define CHROOT ""
-#define CHRDIR ""
-
-#define ENFORCE 1
-
 static struct rule_t rules[] = {
 	{ USER, GROUP, "whoami", "/usr/bin/whoami" },
 	{ USER, GROUP, "ifconfig", "/sbin/ifconfig" },
