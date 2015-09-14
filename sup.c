@@ -63,6 +63,10 @@ int main(int argc, char **argv) {
 	gid = getgid ();
 
 	for (i = 0; rules[i].cmd != NULL; i++) {
+		if (uid != SETUID && rules[i].uid != -1 && rules[i].uid != uid)
+			continue;
+		if (gid != SETGID && rules[i].gid != -1 && rules[i].gid != gid)
+			continue;
 		if (*rules[i].cmd=='*' || !strcmp (argv[1], rules[i].cmd)) {
 #if ENFORCE	
 			struct stat st;
@@ -77,12 +81,6 @@ int main(int argc, char **argv) {
 			if (st.st_mode & 0222)
 				return die (1, "stat", "cannot run writable binaries.");
 #endif
-			if (uid != SETUID && rules[i].uid != -1 && rules[i].uid != uid)
-				return die (1, "urule", "user does not match");
-
-			if (gid != SETGID && rules[i].gid != -1 && rules[i].gid != gid)
-				return die (1, "grule", "group id does not match");
-
 			if (setuid (SETUID) == -1 || setgid (SETGID) == -1 ||
 			    seteuid (SETUID) == -1 || setegid (SETGID) == -1)
 				return die (1, "set[e][ug]id", strerror (errno));
